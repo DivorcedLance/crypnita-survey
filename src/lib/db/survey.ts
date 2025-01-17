@@ -27,7 +27,6 @@ export const postSurveyResponse = async (surveyResponse: SurveyResponse) => {
   try {
     // Add a new document with a generated id
     await addDoc(collection(db, 'SurveyResponse'), surveyResponse);
-    console.log('SurveyResponse data added successfully:', surveyResponse);
   } catch (error) {
     console.error('Error adding surveyResponse data:', error);
   }

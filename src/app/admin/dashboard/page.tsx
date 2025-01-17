@@ -30,7 +30,6 @@ import type { OrbPoint, Operator } from "@/types"
 import { asignOperatorToOrbPoint, deleteOperator, getOperators } from "@/lib/db/operator"
 import { deleteOrbPoint, getOrbPoints } from "@/lib/db/orbPoint"
 import { DialogDescription } from "@radix-ui/react-dialog"
-import { useAuth } from "@/hooks/use-auth"
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -47,15 +46,11 @@ export default function AdminDashboard() {
     operatorId: "",
   })
 
-  const { user: userAuth } = useAuth()
-  console.log("userAuth", userAuth)
-
   useEffect(() => {
 
     const checkAdmin = async () => {
 
       const user = auth.currentUser
-      console.log("user", user)
 
       if (!user) {
         router.push("/auth/login")
