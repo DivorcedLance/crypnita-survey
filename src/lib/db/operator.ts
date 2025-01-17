@@ -74,8 +74,10 @@ export const asignOperatorToOrbPoint = async (operatorId: string, orbPointId: st
       throw new Error('Orb point is already assigned to this operator');
     }
 
-    await updateDoc(doc(db, 'Operator', operatorId), {orbPointId: orbPointId});
-    await updateDoc(doc(db, 'OrbPoint', orbPointId), {operatorId: operatorId});
+    await Promise.all([
+      updateDoc(doc(db, 'Operator', operatorId), {orbPointId: orbPointId}),
+      updateDoc(doc(db, 'OrbPoint', orbPointId), {operatorId: operatorId})
+    ]);
 
   } catch (error) {
     console.error('Error asigning operator to orb point:', error);
@@ -93,8 +95,12 @@ export const deleteOperator = async (operatorId: string) => {
     if (orbPointId) {
       await updateDoc(doc(db, 'OrbPoint', orbPointId), {operatorId: null});
     }
+    
+    await Promise.all([
+      deleteDoc(doc(db, 'User', operatorDoc.data().userDataId)),
+      deleteDoc(doc(db, 'Operator', operatorId))
+    ]);
 
-    await deleteDoc(doc(db, 'Operator', operatorId));
   } catch (error) {
     console.error('Error deleting operator:', error);
   }
