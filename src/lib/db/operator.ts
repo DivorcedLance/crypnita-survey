@@ -1,6 +1,6 @@
 import { Operator } from "@/types/index";
 
-import { doc, getDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/db/firebaseConnection';
 import { getUserById } from "@/lib/db/user";
 
@@ -79,5 +79,23 @@ export const asignOperatorToOrbPoint = async (operatorId: string, orbPointId: st
 
   } catch (error) {
     console.error('Error asigning operator to orb point:', error);
+  }
+}
+
+export const deleteOperator = async (operatorId: string) => {
+  try {
+    const operatorDoc = await getDoc(doc(db, 'Operator', operatorId));
+    if (!operatorDoc.exists()) {
+      throw new Error('Operator does not exist');
+    }
+
+    const orbPointId = operatorDoc.data().orbPointId;
+    if (orbPointId) {
+      await updateDoc(doc(db, 'OrbPoint', orbPointId), {operatorId: null});
+    }
+
+    await deleteDoc(doc(db, 'Operator', operatorId));
+  } catch (error) {
+    console.error('Error deleting operator:', error);
   }
 }
