@@ -1,6 +1,6 @@
 import { OrbPoint } from "@/types/index";
 
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/db/firebaseConnection';
 
 // Function to fetch and set orbPoint data
@@ -34,5 +34,22 @@ export const getOrbPoints = async () => {
     return orbPoints;
   } catch (error) {
     console.error('Error fetching orbPoints:', error);
+  }
+}
+
+export const deleteOrbPoint = async (orbPointId: string) => {
+  try {
+    const orbPointRef = doc(db, 'OrbPoint', orbPointId);
+
+    const orbPointDoc = await getDoc(orbPointRef);
+    if (!orbPointDoc.exists()) {
+      throw new Error('Orb point does not exist');
+    }
+    if (orbPointDoc.data().operatorId) {
+      await updateDoc(doc(db, 'Operator', orbPointDoc.data().operatorId), {orbPointId: null});
+    }
+    await deleteDoc(orbPointRef);
+  } catch (error) {
+    console.error('Error deleting orbPoint:', error);
   }
 }

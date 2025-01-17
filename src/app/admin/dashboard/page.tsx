@@ -27,8 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, Plus } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { OrbPoint, Operator } from "@/types"
-import { asignOperatorToOrbPoint, getOperators } from "@/lib/db/operator"
-import { getOrbPoints } from "@/lib/db/orbPoint"
+import { asignOperatorToOrbPoint, deleteOperator, getOperators } from "@/lib/db/operator"
+import { deleteOrbPoint, getOrbPoints } from "@/lib/db/orbPoint"
 import { DialogDescription } from "@radix-ui/react-dialog"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -239,7 +239,7 @@ export default function AdminDashboard() {
                 <div className="space-y-2">
                   <Label>Sectores</Label>
                   {newOrbPoint.sectors.map((sector, index) => (
-                    <div key={index} className="grid grid-cols-2 gap-4 mt-2">
+                    <div key={index} className="grid grid-cols-3 gap-4 mt-2">
                       <Input
                         placeholder="Nombre del sector"
                         value={sector.sectorName}
@@ -256,6 +256,18 @@ export default function AdminDashboard() {
                         }
                         required
                       />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const updatedSectors = newOrbPoint.sectors.filter(
+                            (_, i) => i !== index
+                          )
+                          setNewOrbPoint({ ...newOrbPoint, sectors: updatedSectors })
+                        }}
+                      >
+                        Eliminar
+                      </Button>
                     </div>
                   ))}
                   <Button
@@ -359,6 +371,50 @@ export default function AdminDashboard() {
                         ))}
                       </SelectContent>
                     </Select>
+                    </TableCell>
+                    <TableCell>
+                      {/* Button to delete */}
+                      <Button className="bg-red-500" onClick={async () => {
+                        await deleteOrbPoint(orbPoint.id!)
+                        setOrbPoints(orbPoints.filter((op) => op.id !== orbPoint.id))
+                      }}>Borrar</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Operadores</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Documento</TableHead>
+                  <TableHead>Email</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {operators.map((operator) => (
+                  <TableRow key={operator.id}>
+                    <TableCell>{operator.userData.firstname} {operator.userData.lastname}</TableCell>
+                    <TableCell>{operator.userData.nDoc}</TableCell>
+                    <TableCell>{operator.userData.email}</TableCell>
+                    <TableCell>
+                      <Button
+                        onClick={async () => {
+                          await deleteOperator(operator.id!)
+                          setOperators(operators.filter((op) => op.id !== operator.id))
+                        }}
+                      >
+                        Borrar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
