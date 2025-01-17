@@ -1,101 +1,243 @@
-import Image from "next/image";
+"use client"
+
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { ThemeToggle } from '@/components/theme-toggle'
+import { Checkbox } from "@/components/ui/checkbox"
+import { Building2, User } from 'lucide-react'
+import type { Operator, OrbPoint, SurveyOption } from '@/types'
+import { getOrbPointById } from '@/lib/db/orbPoint'
+import { postSurveyResponse } from '@/lib/db/survey'
+import { collection, getDocs, query, where } from "firebase/firestore"
+import { db, auth } from "@/lib/db/firebaseConnection"
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const router = useRouter()
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const [operator, setOperator] = useState<Operator | null>(null)
+  const [orbpoint, setOrbpoint] = useState<OrbPoint | null>(null)
+  const [howDidYouHearOptions, setHowDidYouHearOptions] = useState<SurveyOption[]>([])
+  const [cryptoOptions, setCryptoOptions] = useState<SurveyOption[]>([])
+  const [selectedSource, setSelectedSource] = useState("")
+  const [selectedSector, setSelectedSector] = useState("")
+  const [selectedCryptos, setSelectedCryptos] = useState<string[]>([])
+  const [contactNumber, setContactNumber] = useState("")
+
+  useEffect(() => {
+
+    const checkOperator = async () => {
+      const user = auth.currentUser
+      if (!user) {
+        router.push("/auth/login")
+        return
+      }
+
+      const userDoc = await getDocs(
+        query(collection(db, "User"), where("email", "==", user.email))
+      )
+
+      if (userDoc.docs[0]?.data()?.role === "admin") {
+        router.push("/admin/dashboard")
+      }
+
+      const operatorDoc = await getDocs(
+        query(collection(db, "Operator"), where("userDataId", "==", userDoc.docs[0].id))
+      )
+
+      return {id: operatorDoc.docs[0].id, userData: userDoc.docs[0]?.data(), ...operatorDoc.docs[0].data()} as Operator
+    }
+
+    const fetchData = async () => {
+      try {
+        checkOperator().then((data) => {
+          setOperator(data!);
+          if (!data) {
+            alert("No se encontró el operador.");
+            return;
+          }
+          if (!data.orbPointId) {
+            alert("El operador no tiene un OrbPoint asignado.");
+            return;
+          }
+          getOrbPointById(data!.orbPointId).then((data) => {
+            setOrbpoint(data!);
+          });
+        });
+  
+        setHowDidYouHearOptions([
+          { id: "1", text: "Redes sociales" },
+          { id: "2", text: "Recomendación de un amigo" },
+          { id: "3", text: "Anuncio" },
+          { id: "4", text: "Evento o activación" },
+        ]);
+  
+        setCryptoOptions([
+          { id: "1", text: "Sí" },
+          { id: "2", text: "No" },
+        ]);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        alert("Hubo un problema al cargar la información.");
+      }
+    };
+
+    fetchData()
+  }, [router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    // Implement survey submission to Firebase
+    await postSurveyResponse({
+      howDidYouHearAbout: selectedSource,
+      visitingFrom: selectedSector,
+      interestedCrypto: selectedCryptos,
+      contactNumber,
+      operatorId: operator!.id!,
+      orbPointId: operator!.orbPointId!,
+      timestamp: new Date()
+    })
+
+    alert("Encuesta enviada con éxito.")
+
+    setSelectedSource("")
+    setSelectedSector("")
+    setSelectedCryptos([])
+    setContactNumber("")
+  }
+
+  if (!operator || !orbpoint) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Encuesta OrbPoint</h1>
+          <ThemeToggle />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Información del OrbPoint
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-2">
+                <div>
+                  <dt className="font-medium">Nombre:</dt>
+                  <dd>{orbpoint.name}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Tipo de área:</dt>
+                  <dd>{orbpoint.areaType}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Dirección:</dt>
+                  <dd>{orbpoint.direction}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Región:</dt>
+                  <dd>{orbpoint.region}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Información del Operador
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-2">
+                <div>
+                  <dt className="font-medium">Nombre:</dt>
+                  <dd>{operator.userData.firstname} {operator.userData.lastname}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Documento:</dt>
+                  <dd>{operator.userData.nDoc}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Email:</dt>
+                  <dd>{operator.userData.email}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Encuesta al Cliente</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <Label>¿Cómo se enteró de nosotros?</Label>
+                <RadioGroup value={selectedSource} onValueChange={setSelectedSource}>
+                  {howDidYouHearOptions.map((option) => (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option.id} id={`source-${option.id}`} />
+                      <Label htmlFor={`source-${option.id}`}>{option.text}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-4">
+                <Label>¿De dónde nos estás visitando?</Label>
+                <RadioGroup value={selectedSector} onValueChange={setSelectedSector}>
+                  {orbpoint.sectors.map((sector, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <RadioGroupItem value={sector.sectorName} id={`sector-${index}`} />
+                      <Label htmlFor={`sector-${index}`}>{sector.sectorName} ({sector.sectorType})</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+                <div className="space-y-4">
+                <Label>¿Le interesa el mundo crypto?</Label>
+                <RadioGroup value={selectedCryptos.join(',')} onValueChange={(value) => setSelectedCryptos(value.split(','))}>
+                  {cryptoOptions.map((option) => (
+                  <div key={option.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option.id} id={`crypto-${option.id}`} />
+                    <Label htmlFor={`crypto-${option.id}`}>{option.text}</Label>
+                  </div>
+                  ))}
+                </RadioGroup>
+                </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Número de contacto</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="Ingrese número de teléfono"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                />
+              </div>
+
+              <Button type="submit" className="w-full">
+                Enviar Encuesta
+              </Button>
+            </CardContent>
+          </Card>
+        </form>
+      </div>
     </div>
-  );
+  )
 }
