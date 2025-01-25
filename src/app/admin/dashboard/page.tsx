@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { collection, getDocs, query, where, addDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/db/firebaseConnection"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/db/firebaseConnection";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -15,28 +15,39 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, Plus } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { OrbPoint, Operator } from "@/types"
-import { asignOperatorToOrbPoint, deleteOperator, getOperators } from "@/lib/db/operator"
-import { deleteOrbPoint, getOrbPoints } from "@/lib/db/orbPoint"
-import { DialogDescription } from "@radix-ui/react-dialog"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AlertCircle, Plus } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { OrbPoint, Operator } from "@/types";
+import {
+  asignOperatorToOrbPoint,
+  deleteOperator,
+  getOperators,
+} from "@/lib/db/operator";
+import { deleteOrbPoint, getOrbPoints } from "@/lib/db/orbPoint";
+import { DialogDescription } from "@radix-ui/react-dialog";
+import Link from "next/link";
 
 export default function AdminDashboard() {
-  const router = useRouter()
-  const [orbPoints, setOrbPoints] = useState<OrbPoint[]>([])
-  const [operators, setOperators] = useState<Operator[]>([])
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(true)
+  const router = useRouter();
+  const [orbPoints, setOrbPoints] = useState<OrbPoint[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [newOrbPoint, setNewOrbPoint] = useState({
     name: "",
     areaType: "",
@@ -44,88 +55,88 @@ export default function AdminDashboard() {
     region: "",
     sectors: [{ sectorName: "", sectorType: "" }],
     operatorId: "",
-  })
+  });
 
   useEffect(() => {
-
     const checkAdmin = async () => {
-
-      const user = auth.currentUser
+      const user = auth.currentUser;
 
       if (!user) {
-        router.push("/auth/login")
-        return
+        router.push("/auth/login");
+        return;
       }
 
       const userDoc = await getDocs(
         query(collection(db, "User"), where("email", "==", user.email))
-      )
+      );
 
       if (userDoc.docs[0]?.data()?.role === "operator") {
-        router.push("/")
+        router.push("/");
       }
-    }
+    };
 
     const fetchData = async () => {
       try {
         const [orbPointsData, operatorsData] = await Promise.all([
           getOrbPoints(),
           getOperators(),
-        ])
+        ]);
 
         if (!orbPointsData || !operatorsData) {
-          throw new Error("Failed to fetch data")
+          throw new Error("Failed to fetch data");
         }
 
         if (orbPointsData.length !== 0) {
-          setOrbPoints(orbPointsData)
+          setOrbPoints(orbPointsData);
         }
 
         if (operatorsData.length !== 0) {
-          setOperators(operatorsData)
+          setOperators(operatorsData);
         }
-
       } catch (err) {
-        console.error(err)
-        setError("Failed to fetch data")
+        console.error(err);
+        setError("Failed to fetch data");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    checkAdmin()
-    fetchData()
-  }, [router])
+    checkAdmin();
+    fetchData();
+  }, [router]);
 
   const handleAddSector = () => {
     setNewOrbPoint({
       ...newOrbPoint,
       sectors: [...newOrbPoint.sectors, { sectorName: "", sectorType: "" }],
-    })
-  }
+    });
+  };
 
   const handleSectorChange = (index: number, field: string, value: string) => {
-    const updatedSectors = [...newOrbPoint.sectors]
+    const updatedSectors = [...newOrbPoint.sectors];
     updatedSectors[index] = {
       ...updatedSectors[index],
       [field]: value,
-    }
-    setNewOrbPoint({ ...newOrbPoint, sectors: updatedSectors })
-  }
+    };
+    setNewOrbPoint({ ...newOrbPoint, sectors: updatedSectors });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     try {
       const newOrbPointDoc = await addDoc(collection(db, "OrbPoint"), {
         ...newOrbPoint,
         createdAt: new Date().toISOString(),
-      })
+      });
 
       // Assign operator to the new OrbPoint
       if (newOrbPoint.operatorId) {
-        await asignOperatorToOrbPoint(newOrbPoint.operatorId, newOrbPointDoc.id)
+        await asignOperatorToOrbPoint(
+          newOrbPoint.operatorId,
+          newOrbPointDoc.id
+        );
       }
 
       // Reset form and refresh data
@@ -136,24 +147,27 @@ export default function AdminDashboard() {
         region: "",
         sectors: [{ sectorName: "", sectorType: "" }],
         operatorId: "",
-      })
-      
+      });
+
       // Refresh the orbPoints list
-      const orbPointsData = await getOrbPoints()
+      const orbPointsData = await getOrbPoints();
       if (!orbPointsData) {
-        throw new Error("Failed to fetch data")
+        throw new Error("Failed to fetch data");
       }
 
-      setOrbPoints(orbPointsData)
-
+      setOrbPoints(orbPointsData);
     } catch (err) {
-      console.error(err)
-      setError("Failed to create OrbPoint")
+      console.error(err);
+      setError("Failed to create OrbPoint");
     }
-  }
+  };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -200,7 +214,10 @@ export default function AdminDashboard() {
                       id="areaType"
                       value={newOrbPoint.areaType}
                       onChange={(e) =>
-                        setNewOrbPoint({ ...newOrbPoint, areaType: e.target.value })
+                        setNewOrbPoint({
+                          ...newOrbPoint,
+                          areaType: e.target.value,
+                        })
                       }
                       required
                     />
@@ -213,7 +230,10 @@ export default function AdminDashboard() {
                     id="direction"
                     value={newOrbPoint.direction}
                     onChange={(e) =>
-                      setNewOrbPoint({ ...newOrbPoint, direction: e.target.value })
+                      setNewOrbPoint({
+                        ...newOrbPoint,
+                        direction: e.target.value,
+                      })
                     }
                     required
                   />
@@ -239,7 +259,11 @@ export default function AdminDashboard() {
                         placeholder="Nombre del sector"
                         value={sector.sectorName}
                         onChange={(e) =>
-                          handleSectorChange(index, "sectorName", e.target.value)
+                          handleSectorChange(
+                            index,
+                            "sectorName",
+                            e.target.value
+                          )
                         }
                         required
                       />
@@ -247,7 +271,11 @@ export default function AdminDashboard() {
                         placeholder="Tipo de sector"
                         value={sector.sectorType}
                         onChange={(e) =>
-                          handleSectorChange(index, "sectorType", e.target.value)
+                          handleSectorChange(
+                            index,
+                            "sectorType",
+                            e.target.value
+                          )
                         }
                         required
                       />
@@ -257,8 +285,11 @@ export default function AdminDashboard() {
                         onClick={() => {
                           const updatedSectors = newOrbPoint.sectors.filter(
                             (_, i) => i !== index
-                          )
-                          setNewOrbPoint({ ...newOrbPoint, sectors: updatedSectors })
+                          );
+                          setNewOrbPoint({
+                            ...newOrbPoint,
+                            sectors: updatedSectors,
+                          });
                         }}
                       >
                         Eliminar
@@ -280,7 +311,7 @@ export default function AdminDashboard() {
                   <Select
                     value={newOrbPoint.operatorId}
                     onValueChange={(value: string) => {
-                      setNewOrbPoint({ ...newOrbPoint, operatorId: value })
+                      setNewOrbPoint({ ...newOrbPoint, operatorId: value });
                     }}
                   >
                     <SelectTrigger>
@@ -289,7 +320,9 @@ export default function AdminDashboard() {
                     <SelectContent>
                       {operators.map((operator) => (
                         <SelectItem key={operator.id!} value={operator.id!}>
-                          {operator.userData.firstname} {operator.userData.lastname} ({operator.userData.nDoc})
+                          {operator.userData.firstname}{" "}
+                          {operator.userData.lastname} ({operator.userData.nDoc}
+                          )
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -327,52 +360,72 @@ export default function AdminDashboard() {
                     <TableCell>{orbPoint.region}</TableCell>
                     <TableCell>{orbPoint.direction}</TableCell>
                     <TableCell>
-                    <Select
-                      value={orbPoint.operatorId || ""}
-                      onValueChange={async (newOperatorId: string) => {
-                        try {
-                          await asignOperatorToOrbPoint(newOperatorId, orbPoint.id!);
+                      <Select
+                        value={orbPoint.operatorId || ""}
+                        onValueChange={async (newOperatorId: string) => {
+                          try {
+                            await asignOperatorToOrbPoint(
+                              newOperatorId,
+                              orbPoint.id!
+                            );
 
-                          const orbPointsData = await getOrbPoints()
-                          if (!orbPointsData) {
-                            throw new Error("Failed to fetch data")
+                            const orbPointsData = await getOrbPoints();
+                            if (!orbPointsData) {
+                              throw new Error("Failed to fetch data");
+                            }
+                            setOrbPoints(orbPointsData);
+                          } catch (error) {
+                            console.error("Error updating operator:", error);
+                            setError("Failed to update operator");
                           }
-                          setOrbPoints(orbPointsData)
-
-                        } catch (error) {
-                          console.error("Error updating operator:", error);
-                          setError("Failed to update operator");
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder="Selecciona un operador"
-                        >
-                          {
-                            operators.find((op) => op.id === orbPoint.operatorId)
-                              ? `${operators.find((op) => op.id === orbPoint.operatorId)?.userData.firstname} ${
-                                  operators.find((op) => op.id === orbPoint.operatorId)?.userData.lastname
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un operador">
+                            {operators.find(
+                              (op) => op.id === orbPoint.operatorId
+                            )
+                              ? `${
+                                  operators.find(
+                                    (op) => op.id === orbPoint.operatorId
+                                  )?.userData.firstname
+                                } ${
+                                  operators.find(
+                                    (op) => op.id === orbPoint.operatorId
+                                  )?.userData.lastname
                                 }`
-                              : "Sin asignar"
-                          }
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {operators.map((operator) => (
-                          <SelectItem key={operator.id!} value={operator.id!}>
-                            {operator.userData.firstname} {operator.userData.lastname} ({operator.userData.nDoc})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                              : "Sin asignar"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {operators.map((operator) => (
+                            <SelectItem key={operator.id!} value={operator.id!}>
+                              {operator.userData.firstname}{" "}
+                              {operator.userData.lastname} (
+                              {operator.userData.nDoc})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/admin/dashboard/orbpoint/${orbPoint.id}`}>
+                        <Button>Estadísticas</Button>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       {/* Button to delete */}
-                      <Button className="bg-red-500" onClick={async () => {
-                        await deleteOrbPoint(orbPoint.id!)
-                        setOrbPoints(orbPoints.filter((op) => op.id !== orbPoint.id))
-                      }}>Borrar</Button>
+                      <Button
+                        className="bg-red-500"
+                        onClick={async () => {
+                          await deleteOrbPoint(orbPoint.id!);
+                          setOrbPoints(
+                            orbPoints.filter((op) => op.id !== orbPoint.id)
+                          );
+                        }}
+                      >
+                        Borrar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -380,7 +433,6 @@ export default function AdminDashboard() {
             </Table>
           </CardContent>
         </Card>
-
 
         <Card>
           <CardHeader>
@@ -398,14 +450,18 @@ export default function AdminDashboard() {
               <TableBody>
                 {operators.map((operator) => (
                   <TableRow key={operator.id}>
-                    <TableCell>{operator.userData.firstname} {operator.userData.lastname}</TableCell>
+                    <TableCell>
+                      {operator.userData.firstname} {operator.userData.lastname}
+                    </TableCell>
                     <TableCell>{operator.userData.nDoc}</TableCell>
                     <TableCell>{operator.userData.email}</TableCell>
                     <TableCell>
                       <Button
                         onClick={async () => {
-                          await deleteOperator(operator.id!)
-                          setOperators(operators.filter((op) => op.id !== operator.id))
+                          await deleteOperator(operator.id!);
+                          setOperators(
+                            operators.filter((op) => op.id !== operator.id)
+                          );
                         }}
                       >
                         Borrar
@@ -419,5 +475,5 @@ export default function AdminDashboard() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
