@@ -1,61 +1,78 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/db/firebaseConnection"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { User } from "@/types/index"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/db/firebaseConnection";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { User } from "@/types/index";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const fetchUserData = async () => {
+          const userDoc = await getDoc(doc(db, "User", user.uid));
+          const userData = { id: user.uid, ...userDoc.data() } as User;
+
+          if (userData.role === "admin") {
+            router.push("/admin/dashboard");
+          } else if (userData.role === "operator") {
+            router.push("/");
+          } else {
+            throw new Error("Invalid user role");
+          }
+        };
+        fetchUserData();
+      }
+    });
+
+    // Limpiar el listener al desmontar el componente
+    return () => unsubscribe();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const userDoc = await getDoc(doc(db, "User", userCredential.user.uid))
-      const userData = {id: userCredential.user.uid, ...userDoc.data()} as User
-
-      if (!userData) {
-        throw new Error("User data not found")
-      }
-
-      if (userData.role === "admin") {
-        router.push("/admin/dashboard")
-      } else if (userData.role === "operator") {
-        router.push("/")
-      } else {
-        throw new Error("Invalid user role")
-      }
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      setError("Failed to log in. Please check your credentials.")
-      console.error(err)
+      setError("Failed to log in. Please check your credentials.");
+      console.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Ingresa a un OrbPoint</CardTitle>
-          <CardDescription>Ingresa tus credenciales para acceder a tu cuenta.</CardDescription>
+          <CardDescription>
+            Ingresa tus credenciales para acceder a tu cuenta.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -65,7 +82,7 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Correo</Label>
               <Input
@@ -76,7 +93,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
               <Input
@@ -94,7 +111,10 @@ export default function LoginPage() {
 
             <p className="text-sm text-center text-muted-foreground">
               ¿No tienes una cuenta?{" "}
-              <Link href="/auth/register" className="text-primary hover:underline">
+              <Link
+                href="/auth/register"
+                className="text-primary hover:underline"
+              >
                 Regístrate
               </Link>
             </p>
@@ -102,5 +122,5 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

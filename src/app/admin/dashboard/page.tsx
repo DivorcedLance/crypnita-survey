@@ -162,6 +162,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      router.push("/auth/login");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to log out");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -182,7 +192,7 @@ export default function AdminDashboard() {
                 Nuevo OrbPoint
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Crear un nuevo OrbPoint</DialogTitle>
               </DialogHeader>
@@ -335,6 +345,9 @@ export default function AdminDashboard() {
               </form>
             </DialogContent>
           </Dialog>
+          <Button onClick={handleLogout} variant="destructive">
+            Cerrar Sesión
+          </Button>
         </div>
 
         <Card>

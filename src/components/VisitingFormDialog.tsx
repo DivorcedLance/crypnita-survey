@@ -16,7 +16,7 @@ export default function VisitingFromDialog({ data }: { data: any[] }) {
       <DialogTrigger asChild>
         <Button>Ver tabla: ¿De dónde nos están visitando?</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>¿De dónde nos están visitando?</DialogTitle>
         </DialogHeader>
