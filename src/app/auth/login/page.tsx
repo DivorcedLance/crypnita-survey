@@ -36,7 +36,10 @@ export default function LoginPage() {
 
           if (userData.role === "admin") {
             router.push("/admin/dashboard");
-          } else if (userData.role === "operator") {
+          } else if (
+            userData.role === "operator" ||
+            userData.role === "promoter"
+          ) {
             router.push("/");
           } else {
             throw new Error("Invalid user role");

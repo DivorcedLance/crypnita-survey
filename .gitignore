@@ -34,3 +34,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+nico-crypnita-firebase-adminsdk-fbsvc-1f57f33533.json

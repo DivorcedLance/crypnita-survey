@@ -26,6 +26,7 @@ export default function OrbpointPage({ params }: { params: { id: string } }) {
     { id: "2", text: "Recomendación de un amigo" },
     { id: "3", text: "Anuncio" },
     { id: "4", text: "Evento o activación" },
+    { id: "5", text: "Promotor" },
   ];
 
   useEffect(() => {

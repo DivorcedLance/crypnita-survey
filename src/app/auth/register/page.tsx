@@ -1,20 +1,26 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { createUserWithEmailAndPassword } from "firebase/auth"
-import { addDoc, collection, doc, setDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/db/firebaseConnection"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { addDoc, collection, doc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/db/firebaseConnection";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function RegisterPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -22,57 +28,57 @@ export default function RegisterPage() {
     firstname: "",
     lastname: "",
     nDoc: "",
-  })
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      return
+      setError("Passwords do not match");
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
-      )
+      );
 
       await setDoc(doc(db, "User", userCredential.user.uid), {
         firstname: formData.firstname,
         lastname: formData.lastname,
         nDoc: formData.nDoc,
         email: formData.email,
-        role: "operator",
+        role: "promoter",
         createdAt: new Date().toISOString(),
-      })
+      });
 
       await addDoc(collection(db, "Operator"), {
         orbPointId: null,
         userDataId: userCredential.user.uid,
-      })
+      });
 
-      router.push("/auth/login")
+      router.push("/auth/login");
     } catch (err) {
-      setError("Failed to create account. Please try again.")
-      console.error(err)
+      setError("Failed to create account. Please try again.");
+      console.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Registrate a un OrbPoint</CardTitle>
-            <CardDescription>Crea tu cuenta de operador</CardDescription>
+          <CardDescription>Crea tu cuenta de operador</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
@@ -114,7 +120,9 @@ export default function RegisterPage() {
               <Input
                 id="nDoc"
                 value={formData.nDoc}
-                onChange={(e) => setFormData({ ...formData, nDoc: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, nDoc: e.target.value })
+                }
                 required
               />
             </div>
@@ -125,7 +133,9 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
               />
             </div>
@@ -170,5 +180,5 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

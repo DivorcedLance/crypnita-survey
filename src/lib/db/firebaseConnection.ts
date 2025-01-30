@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import {
-  browserLocalPersistence,
+  browserSessionPersistence,
   getAuth,
   setPersistence,
 } from "firebase/auth";
@@ -23,7 +23,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-setPersistence(auth, browserLocalPersistence)
+setPersistence(auth, browserSessionPersistence)
   .then(() => {})
   .catch((error) => {
     console.error(error);

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/db/firebaseConnection";
@@ -30,20 +31,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, Plus } from "lucide-react";
+import { AlertCircle, Plus, UserRoundCog } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { OrbPoint, Operator } from "@/types";
 import {
   asignOperatorToOrbPoint,
   deleteOperator,
+  fetchPromotersWithoutOrbPoint,
   getOperators,
 } from "@/lib/db/operator";
 import { deleteOrbPoint, getOrbPoints } from "@/lib/db/orbPoint";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import Link from "next/link";
+import { createSupervisorAction } from "./actions";
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [orbPoints, setOrbPoints] = useState<OrbPoint[]>([]);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [error, setError] = useState("");
@@ -56,6 +60,20 @@ export default function AdminDashboard() {
     sectors: [{ sectorName: "", sectorType: "" }],
     operatorId: "",
   });
+
+  const [newOperator, setNewOperator] = useState({
+    email: "",
+    password: "",
+    firstname: "",
+    lastname: "",
+    nDoc: "",
+  });
+
+  const [selectedOrbPoint, setSelectedOrbPoint] = useState<string>("");
+  const [selectedPromoters, setSelectedPromoters] = useState<string[]>([]);
+  const [promotersWithoutOrbPoint, setPromotersWithoutOrbPoint] = useState<
+    any[]
+  >([]);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -104,6 +122,69 @@ export default function AdminDashboard() {
     checkAdmin();
     fetchData();
   }, [router]);
+
+  useEffect(() => {
+    const fetchPromoters = async () => {
+      try {
+        const promoters = await fetchPromotersWithoutOrbPoint();
+        setPromotersWithoutOrbPoint(promoters);
+      } catch {
+        alert("Error al cargar operadores disponibles.");
+      }
+    };
+    fetchPromoters();
+  }, []);
+
+  const handleCreateOperator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    startTransition(async () => {
+      try {
+        await createSupervisorAction({
+          email: newOperator.email,
+          password: newOperator.password,
+          firstname: newOperator.firstname,
+          lastname: newOperator.lastname,
+          nDoc: newOperator.nDoc,
+        });
+        // Limpia formulario
+        setNewOperator({
+          email: "",
+          password: "",
+          firstname: "",
+          lastname: "",
+          nDoc: "",
+        });
+        alert("Supervisor creado exitosamente.");
+        const operatorsData = await getOperators();
+        if (!operatorsData) {
+          throw new Error("Failed to fetch data");
+        }
+        setOperators(operatorsData);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Error creando supervisor");
+      }
+    });
+  };
+
+  const handleAssignPromoters = async () => {
+    try {
+      for (const promoterId of selectedPromoters) {
+        await asignOperatorToOrbPoint(promoterId, selectedOrbPoint);
+      }
+
+      const promoters = await fetchPromotersWithoutOrbPoint();
+      setPromotersWithoutOrbPoint(promoters);
+
+      setSelectedPromoters([]);
+      setSelectedOrbPoint("");
+    } catch (error) {
+      console.error("Error assigning promoters:", error);
+      setError("Failed to assign promoters");
+    }
+  };
 
   const handleAddSector = () => {
     setNewOrbPoint({
@@ -185,6 +266,7 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+
           <Dialog>
             <DialogTrigger asChild>
               <Button>
@@ -317,7 +399,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="operator">Asignar Operador</Label>
+                  <Label htmlFor="operator">Asignar Supervisor</Label>
                   <Select
                     value={newOrbPoint.operatorId}
                     onValueChange={(value: string) => {
@@ -325,7 +407,7 @@ export default function AdminDashboard() {
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccione un operador" />
+                      <SelectValue placeholder="Seleccione un supervisor" />
                     </SelectTrigger>
                     <SelectContent>
                       {operators.map((operator) => (
@@ -345,6 +427,166 @@ export default function AdminDashboard() {
               </form>
             </DialogContent>
           </Dialog>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Crear Supervisor
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Crear Supervisor</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreateOperator} className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    placeholder="Email"
+                    value={newOperator.email}
+                    onChange={(e) =>
+                      setNewOperator({
+                        ...newOperator,
+                        email: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                  <Input
+                    placeholder="Contraseña"
+                    type="password"
+                    value={newOperator.password}
+                    onChange={(e) =>
+                      setNewOperator({
+                        ...newOperator,
+                        password: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    placeholder="Nombres"
+                    value={newOperator.firstname}
+                    onChange={(e) =>
+                      setNewOperator({
+                        ...newOperator,
+                        firstname: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                  <Input
+                    placeholder="Apellidos"
+                    value={newOperator.lastname}
+                    onChange={(e) =>
+                      setNewOperator({
+                        ...newOperator,
+                        lastname: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <Input
+                  placeholder="Número de documento"
+                  value={newOperator.nDoc}
+                  onChange={(e) =>
+                    setNewOperator({ ...newOperator, nDoc: e.target.value })
+                  }
+                  required
+                />
+                <Button disabled={isPending} type="submit" className="w-full">
+                  {isPending ? "Creando..." : "Crear Supervisor"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <UserRoundCog className="mr-2 h-4 w-4" />
+                Asignar Operadores
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Asignar Operadores a OrbPoint</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Select
+                  value={selectedOrbPoint}
+                  onValueChange={(value) => setSelectedOrbPoint(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione un OrbPoint" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orbPoints.map((orbPoint) => (
+                      <SelectItem key={orbPoint.id!} value={orbPoint.id!}>
+                        {orbPoint.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Asignar</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {promotersWithoutOrbPoint.map((promoter) => (
+                      <TableRow key={promoter.id}>
+                        <TableCell>
+                          {promoter.userData.firstname}{" "}
+                          {promoter.userData.lastname}
+                        </TableCell>
+                        <TableCell>{promoter.userData.email}</TableCell>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selectedPromoters.includes(promoter.id!)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPromoters([
+                                  ...selectedPromoters,
+                                  promoter.id!,
+                                ]);
+                              } else {
+                                setSelectedPromoters(
+                                  selectedPromoters.filter(
+                                    (id) => id !== promoter.id
+                                  )
+                                );
+                              }
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                <Button onClick={handleAssignPromoters} className="w-full">
+                  Asignar Operadores
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Button onClick={handleLogout} variant="destructive">
             Cerrar Sesión
           </Button>
@@ -362,7 +604,7 @@ export default function AdminDashboard() {
                   <TableHead>Tipo de área</TableHead>
                   <TableHead>Región</TableHead>
                   <TableHead>Dirección</TableHead>
-                  <TableHead>Operador</TableHead>
+                  <TableHead>Supervisor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -394,7 +636,7 @@ export default function AdminDashboard() {
                         }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un operador">
+                          <SelectValue placeholder="Selecciona un supervisor">
                             {operators.find(
                               (op) => op.id === orbPoint.operatorId
                             )
@@ -449,7 +691,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Operadores</CardTitle>
+            <CardTitle>Supervisores</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
