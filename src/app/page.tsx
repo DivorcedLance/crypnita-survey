@@ -7,7 +7,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, LogOutIcon, User } from "lucide-react";
 import type { Operator, OrbPoint, SurveyOption } from "@/types";
 import { getOrbPointById } from "@/lib/db/orbPoint";
@@ -158,20 +157,13 @@ export default function Home() {
     );
   }
 
-  if (operator === null) {
+  if (operator === null || !operator.orbPointId) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <h2>
-          No tienes un OrbPoint asignado todavía. Contacta a tu supervisor.
+          No tienes asignado un supervisor en este momento. Por favor, contacta
+          a tu supervisor para más información.
         </h2>
-      </div>
-    );
-  }
-
-  if (!operator.orbPointId) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <h2>Aún no se te ha asignado un OrbPoint.</h2>
       </div>
     );
   }
@@ -343,6 +335,7 @@ export default function Home() {
                   placeholder="Ingrese número de teléfono"
                   value={contactNumber}
                   onChange={(e) => setContactNumber(e.target.value)}
+                  disabled={!selectedCryptos.includes("1")}
                 />
               </div>
 
