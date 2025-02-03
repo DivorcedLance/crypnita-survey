@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export interface User {
   id?: string;
   nDoc: string;
@@ -7,8 +9,8 @@ export interface User {
   role: string;
   createdAt: Date;
 }
-  
-  export interface Operator {
+
+export interface Operator {
   id?: string;
   orbPointId: string | null;
   userDataId: string;
@@ -42,5 +44,5 @@ export interface SurveyResponse {
   contactNumber: string;
   operatorId: string;
   orbPointId: string;
-  timestamp: Date;
+  timestamp: Timestamp | Date;
 }

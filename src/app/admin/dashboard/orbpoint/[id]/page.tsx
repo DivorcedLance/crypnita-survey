@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
@@ -7,6 +8,7 @@ import {
   query,
   where,
   getDocs,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/db/firebaseConnection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,11 +17,21 @@ import { useEffect, useState } from "react";
 import { OrbPoint, SurveyResponse } from "@/types";
 import HowDidYouHearDialog from "@/components/HowDidYouHearDialog";
 import VisitingFromDialog from "@/components/VisitingFormDialog";
+import { getRangeDates, RangeOption } from "../utils";
+import { RangeSelector } from "../components/RangeSelector";
+import StatsComponent from "@/components/StatsComponent";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export default function OrbpointPage({ params }: { params: { id: string } }) {
   const [orbPoint, setOrbPoint] = useState<OrbPoint | null>(null);
   const [surveyResponses, setSurveyResponses] = useState<SurveyResponse[]>([]);
+  const [filteredSurveyResponses, setFilteredSurveyResponses] = useState<
+    SurveyResponse[]
+  >([]);
+  const [range, setRange] = useState<RangeOption>("1D");
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const howDidYouHearOptions = [
     { id: "1", text: "Redes sociales" },
@@ -61,6 +73,48 @@ export default function OrbpointPage({ params }: { params: { id: string } }) {
     fetchData();
   }, [params.id]);
 
+  useEffect(() => {
+    if (surveyResponses.length === 0) return;
+    const [start, end] = getRangeDates(range);
+
+    if (start === "ALL") {
+      setFilteredSurveyResponses(surveyResponses);
+      console.log({ surveyResponses, range, start, end });
+      return;
+    }
+
+    if (start === "DAY") {
+      if (!selectedDate) return;
+      const filtered = surveyResponses.filter((resp) => {
+        const t =
+          resp.timestamp instanceof Timestamp
+            ? resp.timestamp.toDate()
+            : resp.timestamp;
+        return (
+          t.getDate() === selectedDate.getDate() &&
+          t.getMonth() === selectedDate.getMonth() &&
+          t.getFullYear() === selectedDate.getFullYear()
+        );
+      });
+      console.log({ filtered, surveyResponses, selectedDate, start, end });
+      setFilteredSurveyResponses(filtered);
+      return;
+    }
+
+    const filtered = surveyResponses.filter((resp) => {
+      if (!resp.timestamp) return false;
+      const t =
+        resp.timestamp instanceof Timestamp
+          ? resp.timestamp.toDate()
+          : resp.timestamp;
+      return t >= start && t <= end;
+    });
+
+    console.log({ filtered, surveyResponses, range, start, end });
+
+    setFilteredSurveyResponses(filtered);
+  }, [surveyResponses, range, selectedDate]);
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -79,15 +133,14 @@ export default function OrbpointPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const totalResponses = surveyResponses.length;
+  const totalResponses = filteredSurveyResponses.length;
 
   const calculateStats = (
     field: string,
     options?: { id: string; text: string }[]
   ) => {
-    const counts = surveyResponses.reduce(
+    const counts = filteredSurveyResponses.reduce(
       (acc: Record<string, number>, response) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const value = (response as any)[field];
         if (value) {
           acc[value] = (acc[value] || 0) + 1;
@@ -128,10 +181,43 @@ export default function OrbpointPage({ params }: { params: { id: string } }) {
             <CardTitle>Estadísticas de {orbPoint.name}</CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="my-4 text-lg flex flex-wrap justify-between items-center">
+              <h2>Seleccione el rango de fechas que desea ver</h2>
+              <div>
+                <RangeSelector range={range} setRange={setRange} />
+                {range === "DAY" && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Label>Seleccionar día:</Label>
+                    <Input
+                      type="date"
+                      onChange={(e) => {
+                        if (!e.target.value) {
+                          setSelectedDate(null);
+                          return;
+                        }
+                        // Convertir 'yyyy-mm-dd' a Date
+                        const [year, month, day] = e.target.value.split("-");
+                        const dateObj = new Date(
+                          Number(year),
+                          Number(month) - 1,
+                          Number(day),
+                          0,
+                          0,
+                          0,
+                          0
+                        );
+                        setSelectedDate(dateObj);
+                      }}
+                      max={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
             <h2 className="text-lg font-semibold mb-4">
               Total de respuestas: {totalResponses}
             </h2>
-            <div className="flex justify-between my-4">
+            <div className="flex flex-col md:flex-row justify-between items-center my-6">
               <h2 className="text-lg font-semibold">
                 ¿Cómo se enteró de nosotros?
               </h2>
@@ -148,7 +234,7 @@ export default function OrbpointPage({ params }: { params: { id: string } }) {
               ))}
             </ul>
 
-            <div className="flex justify-between mt-8 mb-4">
+            <div className="flex flex-col md:flex-row justify-between items-center mt-8 mb-6">
               <h2 className="text-lg font-semibold">
                 ¿De dónde nos estás visitando?
               </h2>
@@ -164,6 +250,14 @@ export default function OrbpointPage({ params }: { params: { id: string } }) {
                 </li>
               ))}
             </ul>
+            <div className="flex flex-col md:flex-row justify-between items-center mt-8 mb-6">
+              <h2 className="text-lg font-semibold">Estadísticas detalladas</h2>
+            </div>
+            <StatsComponent
+              responses={surveyResponses}
+              timeRange={range}
+              selectedDate={selectedDate}
+            />
           </CardContent>
         </Card>
       </div>
