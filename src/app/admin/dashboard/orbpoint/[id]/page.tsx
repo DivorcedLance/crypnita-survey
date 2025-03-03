@@ -29,7 +29,7 @@ export default function OrbpointPage({ params }: { params: { id: string } }) {
   const [filteredSurveyResponses, setFilteredSurveyResponses] = useState<
     SurveyResponse[]
   >([]);
-  const [range, setRange] = useState<RangeOption>("1D");
+  const [range, setRange] = useState<RangeOption>("ALL");
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
